@@ -2,9 +2,8 @@ import numpy as np
 import csv
 import random
 
+
 # Euclidean distance measuring function
-
-
 def distance(x, y):
     dist = np.linalg.norm(np.array(x)-np.array(y))
     return dist
