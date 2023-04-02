@@ -5,8 +5,6 @@ import csv
 
 # given cities
 cities = []
-# solution
-sol = []
 
 
 populationSize = 60
@@ -27,7 +25,7 @@ class Chromosome:
         self.genes = g
         self.fitness = 0
         if self.genes.__len__ () == 0:
-            temp_list = list (range (1000))
+            temp_list = list(range(1, s))
             random.shuffle (temp_list)
             # ordering data set randomly
             self.genes = temp_list.copy ()
@@ -38,10 +36,9 @@ class Chromosome:
         value = 0
         global bestValue
 
-        for i in range (len(cities)-1):
-            pos_city_1 = [float (cities[sol[idx]][0]), float (cities[sol[idx]][1])]
-            pos_city_2 = [float (cities[sol[idx + 1]][0]), float (cities[sol[idx + 1]][1])]
-            # distance calculation
+        for i in range (len (self.genes)):
+            pos_city_1 = cities[self.genes[i]]
+            pos_city_2 = cities[self.genes[(i + 1) % len (self.genes)]]
             dist = distance (pos_city_1, pos_city_2)
 
             # accumulation
@@ -101,44 +98,12 @@ def mutation(c):
 
 
 # 1. get solution sequence and reordering (sort from 0)
-with open ('example_solution.csv', mode='r', newline='', encoding='utf-8-sig') as solution:
-    # read solution sequence
-    reader = csv.reader (solution)
-    for row in reader:
-        sol.append (int (row[0]))
-
-    # reordering solution sequence
-    idx = sol.index (0)
-    front = sol[idx:]
-    back = sol[0:idx]
-
-    sol = front + back
-
-    # expand 0 city (start) for simplicity
-    sol.append (int (0))
-
-# 2. get TSP city map
 with open ('TSP.csv', mode='r', newline='', encoding='utf-8-sig') as tsp:
-    # read TSP city map
-    reader = csv.reader (tsp)
-    for row in reader:
-        cities.append (row)
+    reader = csv.reader(tsp)
+    for row in reader :
+        tmp = [float(row[0]), float(row[1])]
+        cities.append(tmp)
 
-# 3. evaluate solution cost
-total_cost = 0
-
-for idx in range (len (sol) - 1):
-    # get city positions
-    pos_city_1 = [float (cities[sol[idx]][0]), float (cities[sol[idx]][1])]
-    pos_city_2 = [float (cities[sol[idx + 1]][0]), float (cities[sol[idx + 1]][1])]
-
-    # distance calculation
-    dist = distance (pos_city_1, pos_city_2)
-
-    # accumulation
-    total_cost += dist
-
-print ('final cost: ' + str (total_cost))
 
 population = []
 i = 0
