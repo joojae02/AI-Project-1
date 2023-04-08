@@ -1,6 +1,11 @@
 import random
 import numpy as np
 import csv
+import math
+from sklearn.cluster import KMeans
+from collections import defaultdict
+import matplotlib.pyplot as plt
+
 
 cities = []
 sol = []
@@ -29,20 +34,31 @@ with open("./2023_AI_TSP.csv", mode='r', newline='', encoding='utf-8-sig') as ts
 total_cost = 0
 
 num_cities = len(cities) 
-gene_size = 100         
-num_generations = 500
+gene_size = 500
+num_generations = 1000
 mutation_rate = 0.01
+num_clusters = 3
 
-import random
-import math
+k_means = KMeans(n_clusters=num_clusters, random_state=0, n_init=50).fit(cities)
+clusters = defaultdict(list)
+for i, label in enumerate(k_means.labels_):
+    clusters[label].append(i)
+
+# scatter plot 그리기
+for j in clusters[0] :
+    plt.scatter(cities[j][0], cities[j][1], c='r')
+for j in clusters[1] :
+    plt.scatter(cities[j][0], cities[j][1], c='g')
+for j in clusters[2] :
+    plt.scatter(cities[j][0], cities[j][1], c='b')
+plt.show()
+
 
 # 현재까지의 거리
 def total_distance(city_order):
     total_distance = 0
     for i in range(len(city_order)):
-        from_city = cities[city_order[i]]
-        to_city = cities[city_order[(i+1) %len(city_order)]]
-        total_distance += distance(from_city, to_city)
+        total_distance += distance(cities[city_order[i]], cities[city_order[(i+1) %len(city_order)]])
     return total_distance
 
 # 초기 세팅 // 하나의 유전자는 도시 개수 만큼 // 랜덤으로 배치
@@ -59,9 +75,7 @@ def create_initial_gene():
 def select(gene):
     fitness_list = []
     for i in range(len(gene)):
-        city_order = gene[i]
-        fitness = total_distance(city_order)
-        fitness_list.append((city_order, fitness))
+        fitness_list.append((gene[i], total_distance(gene[i])))
     fitness_list = sorted(fitness_list, key=lambda x:x[1])
     return fitness_list[0][0], fitness_list[1][0]
 
@@ -119,14 +133,14 @@ def genetic_algorithm():
             best_distance = best_route[1]
             best_city_order = best_route[0]
             print("///////////////////////////////////////////////////////")
+            print("depth : "+str(i))
             print(best_distance) # 적합도 (총 거리)
             print(best_city_order[:10]) # 순서중 10개만 출력
             print("///////////////////////////////////////////////////////")
-
     return best_city_order, best_distance  
 
 
 
-best_ordered, best_distance = genetic_algorithm()
- # print("Best ordered:", best_ordered)
-print("Shortest distance:", best_distance)
+# best_ordered, best_distance = genetic_algorithm()
+#  # print("Best ordered:", best_ordered)
+# print("Shortest distance:", best_distance)
