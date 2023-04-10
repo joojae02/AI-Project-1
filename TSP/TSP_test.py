@@ -167,7 +167,7 @@ def tsp_brute_force(city_center_coords):
 # 군집 수
 k = 10
 
-mutation_rate = 0.1
+mutation_rate = 0.3
 
 # 도시의 좌표를 생성
 cities_coords = []
@@ -180,11 +180,24 @@ cities_coords = np.array(cities_coords)
 
 cluster_coords, cluster_centers = kmeans_cluster(cities_coords, k)
 
+
+
+
+
 # 군집별 scatter plot 그리기
 # for i in range(k):
 #    plt.scatter(cluster_coords[i][:, 0],
 #                cluster_coords[i][:, 1], s=5)
 # plt.show()
+
+# 클러스터 별로 유전 알고리즘 돌리기
+total_path = []
+best_cluster = []
+for i in range(k):
+    best_path, best_distance = genetic_algorithm(len(cluster_coords[i]), cluster_coords[i], 1000)
+    best_cluster.append(best_path)
+    total_path.extend(best_path)
+
 
 def total_cal_distance(city_order):
     total_distance = 0
@@ -192,146 +205,141 @@ def total_cal_distance(city_order):
         total_distance += distance(cities_coords[city_order[i]], cities_coords[city_order[(i+1) %len(city_order)]])
     return total_distance
 
-# 클러스터 별로 유전 알고리즘 돌리기
-total_path = []
-best_cluster = []
-for i in range(k):
-    best_path, best_distance = genetic_algorithm(len(cluster_coords[i]), cluster_coords[i], 100)
-    best_cluster.append(best_path)
-    total_path.extend(best_path)
-
-
-
+###################################################################
+#
+# 클러스터 최종 트리 구성 후 전체 경로
+#
 # 클러스터로 트리 노드 생성 후 합치기
-# def build_tree(best_cluster):
-#     tree = {}
+def build_tree(best_cluster):
+    tree = {}
     
-#     # 각 클러스터에 대해 트리 노드 생성
-#     node = tree
-#     for city in best_cluster:
-#         if city not in node:
-#             node[city] = {}
-#         node = node[city]
+    # 각 클러스터에 대해 트리 노드 생성
+    node = tree
+    for city in best_cluster:
+        if city not in node:
+            node[city] = {}
+        node = node[city]
     
-#     node["cluster_" + str(i)] = {"path": best_cluster, "cost": total_cal_distance(best_cluster)}
-#     # 생성된 트리 업데이트
-#     update_tree(tree)
+    node["cluster_" + str(i)] = {"path": best_cluster, "cost": total_cal_distance(best_cluster)}
+    # 생성된 트리 업데이트
+    update_tree(tree)
     
-#     return tree
-# def update_tree(node):
-#     # 노드가 leaf 노드인 경우 (클러스터의 최적 경로를 찾은 경우)
-#     if "path" in node:
-#         return node["cost"]
+    return tree
+def update_tree(node):
+    # 노드가 leaf 노드인 경우 (클러스터의 최적 경로를 찾은 경우)
+    if "path" in node:
+        return node["cost"]
 
-#     # 노드가 내부 노드인 경우 (재귀적으로 자식 노드를 업데이트하고 최적 경로를 찾음)
-#     optimal_cost = float("inf")
-#     optimal_path = None
-#     for child in node.values():
-#         child_cost = update_tree(child)
-#         if child_cost < optimal_cost:
-#             optimal_cost = child_cost
-#             optimal_path = child["path"]
+    # 노드가 내부 노드인 경우 (재귀적으로 자식 노드를 업데이트하고 최적 경로를 찾음)
+    optimal_cost = float("inf")
+    optimal_path = None
+    for child in node.values():
+        child_cost = update_tree(child)
+        if child_cost < optimal_cost:
+            optimal_cost = child_cost
+            optimal_path = child["path"]
 
-#     # 현재 노드의 최적 경로와 비용 업데이트
-#     node["path"] = optimal_path
-#     node["cost"] = optimal_cost + total_cal_distance(optimal_path)
+    # 현재 노드의 최적 경로와 비용 업데이트
+    node["path"] = optimal_path
+    node["cost"] = optimal_cost + total_cal_distance(optimal_path)
 
-#     return node["cost"]
+    return node["cost"]
 
-# def merge_clusters(clusters):
-#     paths = []
-#     for i, cluster in enumerate(clusters):
-#         tree = build_tree(cluster)
-#         path = get_optimal_path(tree)
-#         paths.append(path)
-#     final_path = [city for path in paths for city in path]
-#     return final_path
-
-# def get_optimal_path(tree):
-#     node = tree
-#     while "path" not in node:
-#         min_child_cost = float("inf")
-#         for child in node.values():
-#             if child["cost"] < min_child_cost:
-#                 min_child_cost = child["cost"]
-#                 min_child_path = child["path"]
-#         node = next((child for child in node.values() if child["path"] == min_child_path), None)
-#     return node["path"]
-# final = merge_clusters(best_cluster)
-
-
-# MST 구성후 합치기
 def merge_clusters(clusters):
-    # 클러스터 중앙값 기준
-    # centers = []
-    # for cluster in clusters:
-    #     center = np.mean(cluster, axis=0)
-    #     centers.append(center)
-
-    # # 클러스터들의 중심점으로부터 가장 가까운 다른 중심점과의 거리를 계산
-    # adj_matrix = np.zeros((len(centers), len(centers)))
-    # for i, center1 in enumerate(centers):
-    #     for j, center2 in enumerate(centers):
-    #         if i != j:
-    #             distance = np.linalg.norm(center1 - center2)
-    #             adj_matrix[i, j] = distance
-    distances = []
-    for cluster in clusters:
-        city_coords = [cities_coords[i] for i in cluster]
-        dist = np.linalg.norm(np.array(city_coords)[:, np.newaxis, :] - np.array(city_coords), axis=2)
-        distances.append(dist)
-
-    # 인접 행렬 생성
-    n = len(clusters)
-    adj_matrix = np.zeros((n * len(clusters[0]), n * len(clusters[0])))
-    for i in range(n):
-        for j in range(i+1, n):
-            cluster_i = clusters[i]
-            cluster_j = clusters[j]
-            city_coords_i = [cities_coords[k] for k in cluster_i]
-            city_coords_j = [cities_coords[k] for k in cluster_j]
-            for k in range(len(cluster_i)):
-                for l in range(len(cluster_j)):
-                    adj_matrix[i*len(clusters[0])+k, j*len(clusters[0])+l] = np.linalg.norm(np.array(city_coords_i[k]) - np.array(city_coords_j[l]))
-                    adj_matrix[j*len(clusters[0])+l, i*len(clusters[0])+k] = adj_matrix[i*len(clusters[0])+k, j*len(clusters[0])+l]
-    
-    # MST를 계산하여 반환
-    G = nx.from_numpy_array(adj_matrix)
-    T = nx.minimum_spanning_tree(G)
-
-    # MST의 간선을 따라 경로 생성
-    path = []
-    visited = set()
-    for u, v in nx.dfs_edges(T):
-        if u not in visited:
-            if u < len(clusters):
-                path.extend(clusters[u])
-            visited.add(u)
-    if v not in visited:
-        if v < len(clusters):
-            path.extend(clusters[v])
-        visited.add(v)
-    # 방문하지 않은 노드들을 추가
+    paths = []
     for i, cluster in enumerate(clusters):
-        if i not in visited:
-            path.extend(cluster)
+        tree = build_tree(cluster)
+        path = get_optimal_path(tree)
+        paths.append(path)
+    final_path = [city for path in paths for city in path]
+    final_path.append(final_path[0])
+    return final_path
 
-    return path
+def get_optimal_path(tree):
+    node = tree
+    while "path" not in node:
+        min_child_cost = float("inf")
+        for child in node.values():
+            if child["cost"] < min_child_cost:
+                min_child_cost = child["cost"]
+                min_child_path = child["path"]
+        node = next((child for child in node.values() if child["path"] == min_child_path), None)
+    return node["path"]
 
-def cal_cluster_distance(cluster1, cluster2):
-    # 두 클러스터 사이의 거리 계산
-    return distance(cluster1[-1], cluster2[0])
+###################################################################
+#
+# # MST 구성후 합치기
+# def merge_clusters(clusters):
+#     # 클러스터 중앙값 기준
+#     # centers = []
+#     # for cluster in clusters:
+#     #     center = np.mean(cluster, axis=0)
+#     #     centers.append(center)
 
+#     # # 클러스터들의 중심점으로부터 가장 가까운 다른 중심점과의 거리를 계산
+#     # adj_matrix = np.zeros((len(centers), len(centers)))
+#     # for i, center1 in enumerate(centers):
+#     #     for j, center2 in enumerate(centers):
+#     #         if i != j:
+#     #             distance = np.linalg.norm(center1 - center2)
+#     #             adj_matrix[i, j] = distance
+
+#     # 인접 행렬 생성
+#     adj_matrices = []
+#     for cluster in clusters:
+#         n = len(cluster)
+#         adj_matrix = np.zeros((n, n))
+#         for i in range(n):
+#             for j in range(i+1, n):
+#                 dist = np.linalg.norm(np.array(cities_coords[cluster[i]]) - np.array(cities_coords[cluster[j]]))
+#                 adj_matrix[i, j] = dist
+#                 adj_matrix[j, i] = dist
+#         print(adj_matrix)
+#         adj_matrices.append(adj_matrix)
+        
+#     # MST를 계산하여 반환
+#     path = []
+#     for i, adj_matrix in enumerate(adj_matrices):
+#         G = nx.from_numpy_array(adj_matrix)
+#         T = nx.minimum_spanning_tree(G)
+#         # DFS를 사용하여 현재 클러스터 내의 경로를 찾음
+#         sub_path = []
+#         visited = set()
+#         for u, v in nx.dfs_edges(T):
+#             if u not in visited:
+#                 sub_path.append(clusters[i][u])
+#                 visited.add(u)
+#             if v not in visited:
+#                 sub_path.append(clusters[i][v])
+#         path += sub_path
+
+#     # 방문하지 않은 노드들을 추가
+#     # for i, cluster in enumerate(clusters):
+#     #     if i not in visited:
+#     #         path.extend(cluster)
+#     path.append(path[0])
+#     return path
+
+######################################################
 
 # 클러스터들 합치기
 final = merge_clusters(best_cluster)
 
+# 전체 경로에서 포함되지 않은 도시 찾기
 missing = []
 for i in range(999):
     if i not in final :
         missing.append(i)
 print("missing : ", missing)
+
+# 트리로  
+print("len final : ", len(final))
+print(final)
 print("total distance", total_cal_distance(final))
+
+# 그냥 이어서 붙이기
+print(total_path)
+print("total distance", total_cal_distance(total_path))
 
 # 클러스터별로 간선 긋기
 # color = ['r', 'b', 'g', 'c', 'm', 'y', 'k', 'w', 'violet', 'dodgerblue', 'limegreen']
