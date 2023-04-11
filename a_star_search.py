@@ -163,6 +163,7 @@ def tsp_brute_force(city_center_coords):
             best_path = path
     return best_path, best_distance
 
+
 def tsp_heuristic(state, remaining_cities):
 
     # If all cities have been visited, the minimum cost to visit all remaining cities is zero.
@@ -205,18 +206,19 @@ def a_star(start, city_coords):
         best_dist = 0
         for i in remaining_cities:
             dist = distance(path[-1], i)
-            heuristic = tsp_heuristic (visited, remaining_cities)
+            heuristic = tsp_heuristic(visited, remaining_cities)
             if dist + heuristic < nearest_dist:
                 nearest_city = i
                 nearest_dist = dist + heuristic
                 best_dist = dist
-        visited.append (nearest_city)
-        path.append (nearest_city)
-        remaining_cities.remove (nearest_city)
+        visited.append(nearest_city)
+        path.append(nearest_city)
+        remaining_cities.remove(nearest_city)
 
-    path.append (start)
-    best_dist += distance (path[-2], start)
+    path.append(start)
+    best_dist += distance(path[-2], start)
     return path, best_dist
+
 
 # 군집 수
 k = 10
