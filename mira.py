@@ -1,4 +1,5 @@
 from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import random
@@ -114,6 +115,7 @@ def genetic_algorithm(population_size, cities_coords, iteration):
     best_path = []
     best_distance = float('inf')
     for i in range(iteration):
+        print(i)
         new_population = []
         elite_size = int(population_size * 0.1)  # keep top 10% of individuals
         new_population.extend(
@@ -214,31 +216,62 @@ cluster_coords, cluster_centers = kmeans_cluster(all_cities_coords, k)
 # 클러스터 별 유전 알고리즘 돌리고 리스트에 저장
 best_cluster = []
 for i in range(k):
-    best_path, best_distance = genetic_algorithm(50, cluster_coords[i], 1)
+    best_path, best_distance = genetic_algorithm(50, cluster_coords[i], 1000)
     best_cluster.append([best_path, best_distance])
 
 # 클러스터 그냥 이어 붙이기
-#res = []
-# for i in range(len(best_cluster)):
-#    res += best_cluster[i][0]
-#print(circuit_fitness(res, all_cities_coords))
+res = []
+for i in range(len(best_cluster)):
+    res += best_cluster[i][0]
+print(circuit_fitness(res, all_cities_coords))
 
 # 클러스터 a* search
 cluster_astar = []
 c_path, c_distance = a_star(0, list(range(k)), cluster_centers)
 print(c_path)
 
+# 클러스터 별 도시 개수
+cities_cnt = []
+sum_cnt = 0
+for i in c_path:
+    sum_cnt += len(cluster_coords[i])
+    cities_cnt.append(sum_cnt)
+print(cities_cnt)
+
 # 순서에 따라 클러스터 이어붙이기
 res = []
 for i in c_path:
     res += best_cluster[i][0]
 print(circuit_fitness(res, all_cities_coords))
+print(len(res))
+
+# 연결 부분 A* search
+for i in cities_cnt:
+    if i == cities_cnt[-1]:
+        astar_path, astar_distance = a_star(
+            res[i - 2], res[i - 2:] + res[:3], all_cities_coords)
+        res[i - 2:] = astar_path[0:2]
+        res[0:3] = astar_path[2:5]
+    else:
+        astar_path, astar_distance = a_star(
+            res[i - 2], res[i - 2:i + 3], all_cities_coords)
+        res[i - 2:i + 3] = astar_path[0:5]
+print(len(res))
+print(circuit_fitness(res, all_cities_coords))
+
+for i in range(len(res)-1):
+    plt.plot([all_cities_coords[res[i]][0], all_cities_coords[res[i+1]][0]],
+             [all_cities_coords[res[i]][1], all_cities_coords[res[i+1]][1]], color='k')
+plt.plot([all_cities_coords[res[-1]][0], all_cities_coords[res[0]][0]],
+         [all_cities_coords[res[-1]][1], all_cities_coords[res[0]][1]], color='k')
+plt.show()
+
 
 # 최적해 8등분해서 a* search 해보기 (1000 % 8 == 0, 나누어 떨어져야 모든 경로가 포함된다.)
-best_astar = []
-for i in range(0, len(res), 7):
-    astar_path, astar_distance = a_star(
-        res[i], res[i:i+7], all_cities_coords)
-    best_astar += astar_path
-print(len(best_astar))
-print(circuit_fitness(best_astar, all_cities_coords))
+#best_astar = []
+# for i in range(0, len(res), 8):
+#    astar_path, astar_distance = a_star(
+#        res[i], res[i:i+8], all_cities_coords)
+#    best_astar += astar_path
+# print(len(best_astar))
+#print(circuit_fitness(best_astar, all_cities_coords))
