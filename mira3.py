@@ -6,18 +6,6 @@ import random
 import math
 
 
-def kmeans_cluster(cities_coords, k):
-    # k-means 클러스터링 수행
-    kmeans = KMeans(n_clusters=k, random_state=0).fit(cities_coords)
-    # 각 도시의 군집 번호 확인
-    cluster_labels = kmeans.labels_
-    cluster_centers = kmeans.cluster_centers_
-    # 각 군집에 속한 도시의 x, y 좌표 추출
-    cluster_coords = []
-    for i in range(k):
-        cluster_coords.append(cities_coords[cluster_labels == i])
-    return cluster_coords, cluster_centers
-
 # Euclidean distance
 
 
@@ -30,6 +18,7 @@ def generate_initial_solution(population_size, cities_coords):
     num_cities = len(cities_coords)
     population = []
     for i in range(population_size):
+        print("generation", i)
         start_city = random.randint(0, num_cities-1)
         unvisited_cities = list(range(num_cities))
         unvisited_cities.remove(start_city)
@@ -72,10 +61,10 @@ def non_circuit_fitness(path, cities_coords):
 # select
 
 
-def select(population, cities_coords, k=20):
+def select(population, cities_coords, k=10):
     participants = random.sample(population, k)
-    winner = max(
-        participants, key=lambda x: non_circuit_fitness(x, cities_coords))
+    winner = min(
+        participants, key=lambda x: circuit_fitness(x, cities_coords))
     return winner
 
 # crossover
@@ -119,7 +108,7 @@ def genetic_algorithm(population_size, cities_coords, iteration):
         new_population = []
         elite_size = int(population_size * 0.1)  # keep top 10% of individuals
         new_population.extend(
-            sorted(population, key=lambda x: non_circuit_fitness(x, cities_coords))[:elite_size])
+            sorted(population, key=lambda x: circuit_fitness(x, cities_coords))[:elite_size])
 
         for i in range(population_size - elite_size):
             parent1 = select(population, cities_coords)
@@ -133,9 +122,9 @@ def genetic_algorithm(population_size, cities_coords, iteration):
         population = new_population
 
         new_population = sorted(
-            new_population, key=lambda x: non_circuit_fitness(x, cities_coords))
+            new_population, key=lambda x: circuit_fitness(x, cities_coords))
         new_best_path = new_population[0]
-        new_best_distance = non_circuit_fitness(new_best_path, cities_coords)
+        new_best_distance = circuit_fitness(new_best_path, cities_coords)
         if new_best_distance < best_distance:
             best_path = new_best_path
             best_distance = new_best_distance
@@ -143,11 +132,6 @@ def genetic_algorithm(population_size, cities_coords, iteration):
             print(best_distance)  # 적합도 (총 거리)
             print(best_path[:10], len(best_path))  # 순서중 10개만 출력
             print("///////////////////////////////////////////////////////")
-
-    # 클러스터 내 인덱스에서 전체 인덱스 path로 변경
-    for idx, city in enumerate(best_path):
-        best_path[idx] = np.where(
-            (all_cities_coords == cities_coords[city]).all(axis=1))[0][0]
 
     return best_path, best_distance
 
@@ -196,85 +180,45 @@ def a_star(start, cities, all_cities_coords):
     return path, best_dist
 
 
-# 군집 수
-k = 10
+mutation_rate = 0.1
 
-mutation_rate = 0.3
-
-# 도시의 좌표를 생성
 all_cities_coords = []
 with open('./2023_AI_TSP.csv', mode='r', newline='', encoding='utf-8-sig') as tsp:
     reader = csv.reader(tsp)
     for row in reader:
         all_cities_coords.append(list(map(float, row)))
 
-population = generate_initial_solution(1, all_cities_coords)
-print(circuit_fitness(population[0], all_cities_coords))
+best_path, best_distance = genetic_algorithm(20, all_cities_coords, 50)
 
-all_cities_coords = np.array(all_cities_coords)
+for i in range(1000):
+    start_index = random.randint(0, len(best_path)-5)
+    end_index = start_index + 5
+    temp = best_path[start_index:end_index]
 
-# 클러스터 별 좌표 리스트와 클러스터 중심 좌표 리턴
-cluster_coords, cluster_centers = kmeans_cluster(all_cities_coords, k)
+    coords = []
+    for i in temp:
+        coords.append(all_cities_coords[i])
 
-# 클러스터 별 유전 알고리즘 돌리고 리스트에 저장
-#best_cluster = []
-for i in range(k):
-    best_path, best_distance = genetic_algorithm(50, cluster_coords[i], 1000)
-    best_cluster.append([best_path, best_distance])
+    res_path = list(range(5))
+    for i in range(5):
+        path, dist = a_star(i, list(range(5)), coords)
+        if non_circuit_fitness(path, coords) < non_circuit_fitness(res_path, coords):
+            res_path = path
 
-# 클러스터 그냥 이어 붙이기
-res = []
-for i in range(len(best_cluster)):
-    res += best_cluster[i][0]
-print(circuit_fitness(res, all_cities_coords))
+    global_res_path = []
+    for i in range(5):
+        idx = res_path[i]
+        global_res_path.append(temp[idx])
 
-# 클러스터 a* search
-cluster_astar = []
-c_path, c_distance = a_star(0, list(range(k)), cluster_centers)
-print(c_path)
+new_best_path = best_path[:start_index] + \
+    global_res_path[:] + best_path[end_index:]
+if circuit_fitness(best_path, all_cities_coords) > circuit_fitness(new_best_path, all_cities_coords):
+    best_path = new_best_path
+print(circuit_fitness(best_path, all_cities_coords))
 
-# 클러스터 별 도시 개수
-cities_cnt = []
-sum_cnt = 0
-for i in c_path:
-    sum_cnt += len(cluster_coords[i])
-    cities_cnt.append(sum_cnt)
-print(cities_cnt)
-
-# 순서에 따라 클러스터 이어붙이기
-res = []
-for i in c_path:
-    res += best_cluster[i][0]
-print(circuit_fitness(res, all_cities_coords))
-print(len(res))
-
-# 연결 부분 A* search
-for i in cities_cnt:
-    if i == cities_cnt[-1]:
-        astar_path, astar_distance = a_star(
-            res[i - 2], res[i - 2:] + res[:3], all_cities_coords)
-        res[i - 2:] = astar_path[0:2]
-        res[0:3] = astar_path[2:5]
-    else:
-        astar_path, astar_distance = a_star(
-            res[i - 2], res[i - 2:i + 3], all_cities_coords)
-        res[i - 2:i + 3] = astar_path[0:5]
-print(len(res))
-print(circuit_fitness(res, all_cities_coords))
-
-for i in range(len(res)-1):
-    plt.plot([all_cities_coords[res[i]][0], all_cities_coords[res[i+1]][0]],
-             [all_cities_coords[res[i]][1], all_cities_coords[res[i+1]][1]], color='k')
-plt.plot([all_cities_coords[res[-1]][0], all_cities_coords[res[0]][0]],
-         [all_cities_coords[res[-1]][1], all_cities_coords[res[0]][1]], color='k')
+for i in range(len(best_path)-1):
+    plt.plot([all_cities_coords[best_path[i]][0], all_cities_coords[best_path[i+1]][0]],
+             [all_cities_coords[best_path[i]][1], all_cities_coords[best_path[i+1]][1]], color='b')
+plt.plot([all_cities_coords[best_path[-1]][0], all_cities_coords[best_path[0]][0]],
+         [all_cities_coords[best_path[-1]][1], all_cities_coords[best_path[0]][1]], color='b')
 plt.show()
-
-
-# 최적해 8등분해서 a* search 해보기 (1000 % 8 == 0, 나누어 떨어져야 모든 경로가 포함된다.)
-#best_astar = []
-# for i in range(0, len(res), 8):
-#    astar_path, astar_distance = a_star(
-#        res[i], res[i:i+8], all_cities_coords)
-#    best_astar += astar_path
-# print(len(best_astar))
-#print(circuit_fitness(best_astar, all_cities_coords))
