@@ -72,9 +72,6 @@ class Cluster :
     def get_cluster_centers(self):
         return self.cluster_centers
 
-
-
-
 class GeneticAlgo :
     def __init__(self, population_size, cities_coords, iteration, mutation_rate, initial_routes = None):
         self.population_size = population_size
@@ -112,11 +109,15 @@ class GeneticAlgo :
     
     # select
     def select(self, selection_rate=0.3):
-        k = int(len(self.population) * selection_rate)
-        participants = random.sample(self.population, k)
-        winner = max(
-            participants, key=lambda x: circuit_fitness(x, self.cities_coords))
-        return winner
+        fitness_list = []
+        for i in range(len(self.population)):
+            fitness_list.append((self.population[i], non_circuit_fitness(self.population[i], self.cities_coords)))
+        fitness_list = sorted(fitness_list, key=lambda x:x[1])
+        # k = int(len(self.population) * selection_rate)
+        # participants = random.sample(self.population, k)
+        # winner = min(
+        #     participants, key=lambda x: circuit_fitness(x, self.cities_coords))
+        return fitness_list[0][0], fitness_list[1][0]
 
     # crossover
     def crossover(self, parent1, parent2):
@@ -156,9 +157,7 @@ class GeneticAlgo :
                 sorted(self.population, key=lambda x: non_circuit_fitness(x, self.cities_coords))[:elite_size])
 
             for i in range(self.population_size - elite_size):
-                parent1 = self.select()
-                parent2 = self.select()
-
+                parent1, parent2= self.select()
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child)
 
@@ -173,10 +172,10 @@ class GeneticAlgo :
             if new_best_distance < best_distance:
                 best_path = new_best_path
                 best_distance = new_best_distance
-                print("///////////////////////////////////////////////////////")
-                print(best_distance)  # 적합도 (총 거리)
-                print(best_path[:10], len(best_path))  # 순서중 10개만 출력
-                print("///////////////////////////////////////////////////////")
+            print("///////////////////////////////////////////////////////")
+            print(best_distance)  # 적합도 (총 거리)
+            print(best_path[:10], len(best_path))  # 순서중 10개만 출력
+            print("///////////////////////////////////////////////////////")
 
         # 클러스터 내 인덱스에서 전체 인덱스 path로 변경
         for idx, city in enumerate(best_path):
@@ -201,7 +200,6 @@ class AStar:
     def tsp_heuristic(self, state, remaining_cities):
         if not remaining_cities:
             return 0
-
         min_cost = math.inf
         for city in remaining_cities:
             cost = distance(self.all_cities_coords[state[-1]], self.all_cities_coords[city])
@@ -263,7 +261,7 @@ def main():
     mutation_rate = 0.3
     best_cluster = []
     for i in range(k):
-        genetic_algo = GeneticAlgo(len(cluster_coords), cluster_coords[i], 10, mutation_rate)
+        genetic_algo = GeneticAlgo(len(cluster_coords), cluster_coords[i], 1000, mutation_rate)
         best_path = genetic_algo.get_best_path()
         best_distance = genetic_algo.get_best_distance()
         best_cluster.append([best_path, best_distance])
@@ -337,11 +335,38 @@ def main():
     #
     # 1024개의 케이스로 다시 유전 알고리즘 수행
     #
-    genetic_algo2 = GeneticAlgo(100, all_cities_coords, 10, mutation_rate, all_reverse_cases)
+    genetic_algo2 = GeneticAlgo(len(all_reverse_cases), all_cities_coords, 10, mutation_rate, all_reverse_cases)
     best_path = genetic_algo2.get_best_path()
     best_distance = genetic_algo2.get_best_distance()
 
     print(circuit_fitness(best_path, all_cities_coords))
+
+    # 최적해 일부분(크기 5)만 최적 경로로 정렬 (1000번 반복)
+    for i in range(1000):
+        start_index = random.randint(0, len(best_path)-5)
+        end_index = start_index + 5
+        temp = best_path[start_index:end_index]
+
+        coords = []
+        for j in temp:
+            coords.append(all_cities_coords[j])
+
+        local_path = list(range(5))
+        for k in range(5):
+            a_star = AStar(k, list(range(5)), coords)
+            path = a_star.get_path()
+            if non_circuit_fitness(path, coords) < non_circuit_fitness(local_path, coords):
+                local_path = path
+
+        global_path = []
+        for l in range(5):
+            idx = local_path[l]
+            global_path.append(temp[idx])
+
+        new_best_path = best_path[:start_index] + global_path[:] + best_path[end_index:]
+        if circuit_fitness(best_path, all_cities_coords) > circuit_fitness(new_best_path, all_cities_coords):
+            best_path = new_best_path
+
     draw_plt(best_path, all_cities_coords)
 
 if __name__ == "__main__":
