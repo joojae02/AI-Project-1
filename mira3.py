@@ -61,7 +61,7 @@ def non_circuit_fitness(path, cities_coords):
 # select
 
 
-def select(population, cities_coords, k=10):
+def select(population, cities_coords, k=1):
     participants = random.sample(population, k)
     winner = min(
         participants, key=lambda x: circuit_fitness(x, cities_coords))
@@ -188,7 +188,7 @@ with open('./2023_AI_TSP.csv', mode='r', newline='', encoding='utf-8-sig') as ts
     for row in reader:
         all_cities_coords.append(list(map(float, row)))
 
-best_path, best_distance = genetic_algorithm(20, all_cities_coords, 50)
+best_path, best_distance = genetic_algorithm(50, all_cities_coords, 500)
 
 for i in range(1000):
     start_index = random.randint(0, len(best_path)-5)
@@ -196,18 +196,18 @@ for i in range(1000):
     temp = best_path[start_index:end_index]
 
     coords = []
-    for i in temp:
-        coords.append(all_cities_coords[i])
+    for j in temp:
+        coords.append(all_cities_coords[j])
 
     res_path = list(range(5))
-    for i in range(5):
-        path, dist = a_star(i, list(range(5)), coords)
+    for k in range(5):
+        path, dist = a_star(k, list(range(5)), coords)
         if non_circuit_fitness(path, coords) < non_circuit_fitness(res_path, coords):
             res_path = path
 
     global_res_path = []
-    for i in range(5):
-        idx = res_path[i]
+    for l in range(5):
+        idx = res_path[l]
         global_res_path.append(temp[idx])
 
 new_best_path = best_path[:start_index] + \
