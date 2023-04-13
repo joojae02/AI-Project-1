@@ -20,11 +20,11 @@ def distance(x, y):
     return dist
 
 # best_astar순서대로 도시간 그래프 그리기
-def draw_plt(best_astar, all_cities_coords):
+def draw_plt(best_astar, all_cities_coords, tmp):
     for i in range(len(best_astar)-1):
         plt.plot([all_cities_coords[best_astar[i]][0], all_cities_coords[best_astar[i+1]][0]], [all_cities_coords[best_astar[i]][1], all_cities_coords[best_astar[i+1]][1]], color='k')
     plt.plot([all_cities_coords[best_astar[-1]][0], all_cities_coords[best_astar[0]][0]], [all_cities_coords[best_astar[-1]][1], all_cities_coords[best_astar[0]][1]], color='k')
-    plt.show()
+    plt.savefig(tmp + '.jpg')
 
 # path의 총 cost 
 def circuit_fitness(path, cities_coords):
@@ -47,7 +47,7 @@ class Cluster :
 
     def kmeans_cluster(self):
         # k-means 클러스터링 수행
-        kmeans = KMeans(n_clusters=self.k, random_state=0).fit(self.cities_coords)
+        kmeans = KMeans(n_clusters=self.k, random_state=0, n_init=15).fit(self.cities_coords)
         # 각 도시의 군집 번호 확인
         self.cluster_labels = kmeans.labels_
         self.cluster_centers = kmeans.cluster_centers_
@@ -229,7 +229,7 @@ class AStar:
 def main():
 
     # 클러스터 별 좌표 리스트와 클러스터 중심 좌표 리턴
-    k = 6
+    k = 10
     city_cluster = Cluster(all_cities_coords, k)
 
     cluster_coords = city_cluster.get_cluster_coords()
@@ -239,7 +239,7 @@ def main():
     mutation_rate = 0.3
     best_cluster = []
     for i in range(k):
-        genetic_algo = GeneticAlgo(len(cluster_coords), cluster_coords[i], 1, mutation_rate)
+        genetic_algo = GeneticAlgo(len(cluster_coords), cluster_coords[i], 1000, mutation_rate)
         best_path = genetic_algo.get_best_path()
         best_distance = genetic_algo.get_best_distance()
         best_cluster.append([best_path, best_distance])
@@ -291,10 +291,15 @@ def main():
     #
     # 1024개의 케이스로 다시 유전 알고리즘 수행
     #
-    genetic_algo2 = GeneticAlgo(len(all_reverse_cases), all_cities_coords, 1, mutation_rate, all_reverse_cases)
+    genetic_algo2 = GeneticAlgo(len(all_reverse_cases), all_cities_coords, 100, mutation_rate, all_reverse_cases)
     best_path = genetic_algo2.get_best_path()
     best_distance = genetic_algo2.get_best_distance()
 
+    print(circuit_fitness(best_path, all_cities_coords))
+    for i in range(len(best_path)-1):
+        plt.plot([all_cities_coords[best_path[i]][0], all_cities_coords[best_path[i+1]][0]], [all_cities_coords[best_path[i]][1], all_cities_coords[best_path[i+1]][1]], color='k')
+    plt.plot([all_cities_coords[best_path[-1]][0], all_cities_coords[best_path[0]][0]], [all_cities_coords[best_path[-1]][1], all_cities_coords[best_path[0]][1]], color='k')
+    plt.savefig('before_a_star1.jpg')
     # 최적해 일부분(크기 5)만 최적 경로로 정렬 (1000번 반복)
     for i in range(1000):
         start_index = random.randint(0, len(best_path)-5)
@@ -325,7 +330,12 @@ def main():
         writer = csv.writer(solution)
         for row in best_path:
             writer.writerow([row])
+
     print(circuit_fitness(best_path, all_cities_coords))
+    for i in range(len(best_path)-1):
+        plt.plot([all_cities_coords[best_path[i]][0], all_cities_coords[best_path[i+1]][0]], [all_cities_coords[best_path[i]][1], all_cities_coords[best_path[i+1]][1]], color='k')
+    plt.plot([all_cities_coords[best_path[-1]][0], all_cities_coords[best_path[0]][0]], [all_cities_coords[best_path[-1]][1], all_cities_coords[best_path[0]][1]], color='k')
+    plt.savefig('after_a_star1.jpg')
 
 if __name__ == "__main__":
     main()
