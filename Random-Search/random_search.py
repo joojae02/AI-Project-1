@@ -1,6 +1,7 @@
 import numpy as np
 import csv
 import random
+import matplotlib.pyplot as plt
 
 
 # Euclidean distance measuring function
@@ -79,4 +80,11 @@ with open('./Random-Search/solution.csv', mode='w', newline='', encoding='utf-8-
     for row in sol:
         writer.writerow([row])
 
-print('final cost: ' + str(best_cost))
+for i in range(len(sol)-1):
+    plt.plot([all_cities_coords[sol[i]][0], sol[best_path[i+1]][0]],
+             [all_cities_coords[sol[i]][1], sol[best_path[i+1]][1]], color='k')
+plt.plot([all_cities_coords[sol[-1]][0], sol[best_path[0]][0]],
+         [all_cities_coords[sol[-1]][1], sol[best_path[0]][1]], color='k')
+plt.show()
+
+print('best distance : ' + str(best_cost))

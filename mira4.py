@@ -258,7 +258,7 @@ def main():
     mutation_rate = 0.3
     best_cluster = []
     for i in range(k):
-        genetic_algo = GeneticAlgo(100, cluster_coords[i], 100, mutation_rate)
+        genetic_algo = GeneticAlgo(50, cluster_coords[i], 50, mutation_rate)
         best_path = genetic_algo.get_best_path()
         best_distance = genetic_algo.get_best_distance()
         best_cluster.append([best_path, best_distance])
@@ -316,7 +316,7 @@ def main():
     new_population.extend(sorted(all_reverse_cases, key=lambda x: circuit_fitness(
         x, all_cities_coords))[:elite_size])
     genetic_algo2 = GeneticAlgo(
-        elite_size, all_cities_coords, 1000, mutation_rate, new_population)
+        elite_size, all_cities_coords, 1, mutation_rate, new_population)
     best_path = genetic_algo2.get_best_path()
     best_distance = genetic_algo2.get_best_distance()
 
@@ -348,12 +348,19 @@ def main():
         if circuit_fitness(best_path, all_cities_coords) > circuit_fitness(new_best_path, all_cities_coords):
             best_path = new_best_path
 
-    for i in range(len(res)-1):
-        plt.plot([all_cities_coords[res[i]][0], all_cities_coords[res[i+1]][0]],
-                 [all_cities_coords[res[i]][1], all_cities_coords[res[i+1]][1]], color='k')
-    plt.plot([all_cities_coords[res[-1]][0], all_cities_coords[res[0]][0]],
-             [all_cities_coords[res[-1]][1], all_cities_coords[res[0]][1]], color='k')
+    for i in range(len(best_path)-1):
+        plt.plot([all_cities_coords[best_path[i]][0], all_cities_coords[best_path[i+1]][0]],
+                 [all_cities_coords[best_path[i]][1], all_cities_coords[best_path[i+1]][1]], color='k')
+    plt.plot([all_cities_coords[best_path[-1]][0], all_cities_coords[best_path[0]][0]],
+             [all_cities_coords[best_path[-1]][1], all_cities_coords[best_path[0]][1]], color='k')
     plt.show()
+
+    idx = best_path.index(0)
+
+    front = best_path[idx:]
+    back = best_path[0:idx]
+
+    best_path = front + back
 
     with open('./solution.csv', mode='w', newline='', encoding='utf-8-sig') as solution:
         writer = csv.writer(solution)
