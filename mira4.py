@@ -1,9 +1,9 @@
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
 import numpy as np
 import csv
 import random
 import math
+import matplotlib.pyplot as plt
 
 # 도시의 좌표를 생성
 all_cities_coords = []
@@ -35,21 +35,11 @@ def draw_plt(best_astar, all_cities_coords):
 # path의 총 cost
 
 
-def circuit_distance(path, cities_coords):
+def circuit_fitness(path, cities_coords):
     total_dist = 0
     for i in range(len(path)):
         pos_city_1 = cities_coords[path[i]]
         pos_city_2 = cities_coords[path[(i+1) % len(path)]]
-        dist = distance(pos_city_1, pos_city_2)
-        total_dist += dist
-    return total_dist
-
-
-def non_circuit_distance(path, cities_coords):
-    total_dist = 0
-    for i in range(len(path) - 1):
-        pos_city_1 = cities_coords[path[i]]
-        pos_city_2 = cities_coords[path[i+1]]
         dist = distance(pos_city_1, pos_city_2)
         total_dist += dist
     return total_dist
@@ -123,7 +113,7 @@ class GeneticAlgo:
         k = int(len(self.population) * selection_rate)
         participants = random.sample(self.population, k)
         winner = min(
-            participants, key=lambda x: circuit_distance(x, self.cities_coords))
+            participants, key=lambda x: circuit_fitness(x, self.cities_coords))
         return winner
 
     # crossover
@@ -157,15 +147,15 @@ class GeneticAlgo:
         best_path = []
         best_distance = float('inf')
         for i in range(self.iteration):
+            print(i)
             new_population = []
-            elite_size = int(self.population_size * 0.1)
+            elite_size = int(self.population_size * 0)
             new_population.extend(
-                sorted(self.population, key=lambda x: non_circuit_distance(x, self.cities_coords))[:elite_size])
+                sorted(self.population, key=lambda x: circuit_fitness(x, self.cities_coords))[:elite_size])
 
             for i in range(self.population_size - elite_size):
                 parent1 = self.select()
                 parent2 = self.select()
-
                 child = self.crossover(parent1, parent2)
                 child = self.mutate(child)
 
@@ -174,9 +164,9 @@ class GeneticAlgo:
             self.population = new_population
 
             new_population = sorted(
-                new_population, key=lambda x: non_circuit_distance(x, self.cities_coords))
+                new_population, key=lambda x: circuit_fitness(x, self.cities_coords))
             new_best_path = new_population[0]
-            new_best_distance = non_circuit_distance(
+            new_best_distance = circuit_fitness(
                 new_best_path, self.cities_coords)
             if new_best_distance < best_distance:
                 best_path = new_best_path
@@ -210,7 +200,6 @@ class AStar:
     def tsp_heuristic(self, state, remaining_cities):
         if not remaining_cities:
             return 0
-
         min_cost = math.inf
         for city in remaining_cities:
             cost = distance(
@@ -249,7 +238,7 @@ class AStar:
 
         return path, best_dist
 
-    def get_path(self):
+    def get_best_path(self):
         return self.path
 
     def get_best_dist(self):
@@ -258,32 +247,22 @@ class AStar:
 
 def main():
 
-    print("///////////////////////////////////////////////////////")
-    print("// 클러스터링 ")
-    print("///////////////////////////////////////////////////////")
-
     # 클러스터 별 좌표 리스트와 클러스터 중심 좌표 리턴
-    k = 10
+    k = 7
     city_cluster = Cluster(all_cities_coords, k)
 
     cluster_coords = city_cluster.get_cluster_coords()
     cluster_centers = city_cluster.get_cluster_centers()
-    print("///////////////////////////////////////////////////////")
-    print("// 클러스터 별 유전 알고리즘 ")
-    print("///////////////////////////////////////////////////////")
+
     # 클러스터 별 유전 알고리즘 돌리고 리스트에 저장
     mutation_rate = 0.3
     best_cluster = []
     for i in range(k):
-        genetic_algo = GeneticAlgo(
-            len(cluster_coords), cluster_coords[i], 10, mutation_rate)
+        genetic_algo = GeneticAlgo(100, cluster_coords[i], 100, mutation_rate)
         best_path = genetic_algo.get_best_path()
         best_distance = genetic_algo.get_best_distance()
         best_cluster.append([best_path, best_distance])
 
-    print("///////////////////////////////////////////////////////")
-    print("// 클러스터 시작점 끝점 기준 a star search ")
-    print("///////////////////////////////////////////////////////")
     # 클러스터 첫, 마지막 도시 사이 좌표 저장
     for i in range(len(best_cluster)):
         first = best_cluster[i][0][0]
@@ -296,17 +275,12 @@ def main():
     min_c_distance = float('inf')
     for i in range(k):
         a_star = AStar(i, list(range(k)), cluster_centers)
-        c_path = a_star.get_path()
+        c_path = a_star.get_best_path()
         c_distance = a_star.get_best_dist()
         if c_distance < min_c_distance:
             min_c_distance = c_distance
             min_c_path = c_path
 
-    print(min_c_path)
-
-    print("///////////////////////////////////////////////////////")
-    print("// 클러스터 이어붙이는 경우의 수 ")
-    print("///////////////////////////////////////////////////////")
     # 순서에 따라 클러스터 이어붙이기
     #
     # 각각의 클러스터는 정방향 역방향 2가지 경우의 수
@@ -327,36 +301,66 @@ def main():
     best_distance = float('inf')
     best_path = []
     for i in all_reverse_cases:
-        tmp = circuit_distance(i, all_cities_coords)
+        tmp = circuit_fitness(i, all_cities_coords)
         if tmp < best_distance:
             best_distance = tmp
             best_path = i
 
-    print(best_distance)
     res = best_distance
 
-    # 최적해 8등분해서 a* search 해보기 (1000 % 8 == 0, 나누어 떨어져야 모든 경로가 포함된다.)
-    # best_astar = []
-    # for i in range(0, len(res), 7):
-    #     astar_path, astar_distance = a_star(
-    #         res[i], res[i:i+7], all_cities_coords)
-    #     best_astar += astar_path
-    # print(len(best_astar))
-    # print(circuit_distance(best_astar, all_cities_coords))
-
-    print("///////////////////////////////////////////////////////")
-    print("// 나온 경우의 수로 2번째 유전 알고리즘 수행 ")
-    print("///////////////////////////////////////////////////////")
     #
     # 1024개의 케이스로 다시 유전 알고리즘 수행
     #
+    new_population = []
+    elite_size = 50
+    new_population.extend(sorted(all_reverse_cases, key=lambda x: circuit_fitness(
+        x, all_cities_coords))[:elite_size])
     genetic_algo2 = GeneticAlgo(
-        100, all_cities_coords, 10, mutation_rate, all_reverse_cases)
+        elite_size, all_cities_coords, 1000, mutation_rate, new_population)
     best_path = genetic_algo2.get_best_path()
     best_distance = genetic_algo2.get_best_distance()
 
-    print(circuit_distance(best_path, all_cities_coords))
-    draw_plt(best_path, all_cities_coords)
+    print("best distance : ", circuit_fitness(best_path, all_cities_coords))
+    # 최적해 일부분(크기 5)만 최적 경로로 정렬 (1000번 반복)
+    for i in range(1000):
+        start_index = random.randint(0, len(best_path)-5)
+        end_index = start_index + 5
+        temp = best_path[start_index:end_index]
+
+        coords = []
+        for j in temp:
+            coords.append(all_cities_coords[j])
+
+        local_path = list(range(5))
+        for k in range(5):
+            a_star = AStar(k, list(range(5)), coords)
+            path = a_star.get_best_path()
+            if circuit_fitness(path, coords) < circuit_fitness(local_path, coords):
+                local_path = path
+
+        global_path = []
+        for l in range(5):
+            idx = local_path[l]
+            global_path.append(temp[idx])
+
+        new_best_path = best_path[:start_index] + \
+            global_path[:] + best_path[end_index:]
+        if circuit_fitness(best_path, all_cities_coords) > circuit_fitness(new_best_path, all_cities_coords):
+            best_path = new_best_path
+
+    for i in range(len(res)-1):
+        plt.plot([all_cities_coords[res[i]][0], all_cities_coords[res[i+1]][0]],
+                 [all_cities_coords[res[i]][1], all_cities_coords[res[i+1]][1]], color='k')
+    plt.plot([all_cities_coords[res[-1]][0], all_cities_coords[res[0]][0]],
+             [all_cities_coords[res[-1]][1], all_cities_coords[res[0]][1]], color='k')
+    plt.show()
+
+    with open('./solution.csv', mode='w', newline='', encoding='utf-8-sig') as solution:
+        writer = csv.writer(solution)
+        for row in best_path:
+            writer.writerow([row])
+    print(len(set(best_path)))
+    print("best distance : ", circuit_fitness(best_path, all_cities_coords))
 
 
 if __name__ == "__main__":

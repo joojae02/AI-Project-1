@@ -190,6 +190,7 @@ with open('./2023_AI_TSP.csv', mode='r', newline='', encoding='utf-8-sig') as ts
 
 best_path, best_distance = genetic_algorithm(50, all_cities_coords, 500)
 
+# 최적해 일부분(크기 5)만 최적 경로로 정렬 (1000번 반복)
 for i in range(1000):
     start_index = random.randint(0, len(best_path)-5)
     end_index = start_index + 5
@@ -199,21 +200,23 @@ for i in range(1000):
     for j in temp:
         coords.append(all_cities_coords[j])
 
-    res_path = list(range(5))
+    local_path = list(range(5))
     for k in range(5):
         path, dist = a_star(k, list(range(5)), coords)
-        if non_circuit_fitness(path, coords) < non_circuit_fitness(res_path, coords):
-            res_path = path
+        if non_circuit_fitness(path, coords) < non_circuit_fitness(local_path, coords):
+            local_path = path
 
-    global_res_path = []
+    global_path = []
     for l in range(5):
         idx = res_path[l]
-        global_res_path.append(temp[idx])
+        global_path.append(temp[idx])
 
-new_best_path = best_path[:start_index] + \
-    global_res_path[:] + best_path[end_index:]
-if circuit_fitness(best_path, all_cities_coords) > circuit_fitness(new_best_path, all_cities_coords):
-    best_path = new_best_path
+    new_best_path = best_path[:start_index] + \
+        global_path[:] + best_path[end_index:]
+    if circuit_fitness(best_path, all_cities_coords) > circuit_fitness(new_best_path, all_cities_coords):
+        best_path = new_best_path
+
+
 print(circuit_fitness(best_path, all_cities_coords))
 
 for i in range(len(best_path)-1):
